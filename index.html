@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=512px,user-scalable=no">
+        <script>
+            const version = () =>
+            {
+                let self = this;
+                this.major = 1;
+                this.minor = 0;
+                this.patch = 0;
+                this.label = "rc";
+                this.patchname = "Alcyone";
+                this.toString = () =>
+                {
+                    return [[self.major,self.minor,self.patch].join("."),self.label,self.patchname].join(" ");
+                }
+            },
+            _ = function(e, c = window)
+            {
+                let init = function(elem)
+                {
+                    elem.display = function(style) { elem.style.display = style; }
+                    elem.css = function(json)
+                    {
+                        try
+                        {
+                            for(let k in json)
+                            {
+                                let cfj = k.split("-");
+                                for (let i = 1; i < cfj.length; i++) cfj[i] = cfj[i].charAt(0).toUpperCase() + cfj[i].slice(1);
+                                cfj = cfj.join("");
+                                this.style[cfj] = json[k];
+                            }
+                        }
+                        catch (ex) { }
+                    }
+                    elem.new = function(type, cls)
+                    {
+                        let obj = null;
+                        if (type) obj = c.document.createElement(type);
+                        else obj = c.document.createElement("div");
+            
+                        if (cls)
+                        {
+                            if (Array.isArray(cls))
+                            {
+                                try
+                                {
+                                    for(let i of cls) obj.classList.add(i);
+                                }
+                                catch (ex) { }
+                            }
+                            else obj.classList.add(cls);
+                        }
+                        elem.append(obj);
+            
+                        return init(obj);
+                    }
+                    elem.find = function(filter) 
+                    {
+                        return init(elem.querySelector(filter));
+                    }
+                    return elem;
+                }
+            
+                if (e && typeof e === "string")
+                {
+                    let obj = c.document.querySelectorAll(e);
+                    if (obj == null) return null;
+                    if (obj.length > 1)
+                    {
+                        let org = obj;
+                        obj = obj[0];
+                        obj.all = org;
+                        obj.get = function(i)
+                        {
+                            if (i < 0)  return init(org[i]);
+                            else return init(org[org.length + i]);
+                        }
+                    }
+                    else obj = obj[0];
+                    return init(obj);
+                }
+                else if (e.constructor.toString().indexOf("HTML") > -1 && e.constructor.toString().indexOf("Element") > -1)
+                {
+                    return init(e);
+                }
+                else console.warn("No Matched Element");
+                return null;
+            },
+            $ = _;
+        </script>
+        <style>
+            html, body {background:#C0C0B0;}
+            body {display:flex; flex-wrap: wrap; justify-content: center; align-items: center; padding-top:64px;}
+
+            * {font-family:'Noto Sans', 'Noto Sans KR'}
+
+            boss, me, fshadow {filter:drop-shadow(0px 2px 3px #000)}
+
+            score {position:fixed; height:64px; left:0; top:0; right:0; background:#FFF;}
+            scorebox {display:flex; margin:0 calc(50% - 300px)}
+            scorebox>* {flex-basis: 0; flex-grow:1; text-align:center; font-size:40px; line-height:80px; position:relative; font-weight:700}
+            scorebox>success::after,
+            scorebox>failed::after {content:"WIN"; position:absolute; width:100%; font-size:18px; top:0; left:0; right:0; height:18px; line-height:18px; font-weight:500}
+            scorebox>failed::after {content:"LOSE";}
+
+            gameboard {display:flex; flex-direction: column; justify-content: center; align-items: center;}
+            pboard {margin:32px; transform:scale(.5);}
+
+            boss {width:320px; height:320px; margin:64px; display:block; position:relative}
+            boss-asset {display:block; background:url(./e10s_asset.png); background-position-x:512px; width:320px; height:320px;}
+            me {width:256px; height:256px; display:block; background:url(./e10s_asset.png);}
+            fshadow {width:256px; height:256px; display:block; background:url(./e10s_asset.png); background-position-y:-256px; position:absolute; margin-top:-172px; padding-bottom:172px; background-repeat: no-repeat; transform-origin:50% 75%;}
+
+            .a {transform:rotate(270deg);}
+            .b {transform:rotate(180deg);}
+            .c {transform:rotate(90deg);}
+            .d {transform:rotate(0deg);}
+
+            marker-a, marker-b, marker-c, marker-d {width:80px; height:80px; position:absolute; background:url(./a.png); display:block; left:calc(50% - 40px); top:-80px;}
+            marker-b {left:auto; right:-80px; top:calc(50% - 40px); background:url(./b.png)}
+            marker-c {top:auto; bottom:-80px; background:url(./c.png)}
+            marker-d {left:-80px; top:calc(50% - 40px);background:url(./d.png)}
+
+            boss-asset.ccw {transform:scaleX(1)}
+            boss-asset.cw {transform:scaleX(-1)}
+        </style>
+    </head>
+    <body>
+        <score>
+            <scorebox>
+                <success>0</success>
+                <failed>0</failed>
+            </scorebox>
+        </score>
+        <gameboard>
+            <pboard>
+                <fshadow class="b"></fshadow>
+                <me></me>
+            </pboard>
+            <boss>
+                <boss-asset></boss-asset>
+                <marker-a></marker-a>
+                <marker-b></marker-b>
+                <marker-c></marker-c>
+                <marker-d></marker-d>
+            </boss>
+        </gameboard>
+    </body>
+    <script>
+        let answer = "", wincount = 0, losecount = 0;
+        const genRand = () =>
+        {
+            let cccw = ["cw", "ccw"][Math.floor(Math.random() * 2)], set = "abcd"[Math.floor(Math.random() * 4)];
+            $("fshadow").setAttribute("class",set);
+            $("boss-asset").setAttribute("class",cccw);
+
+            switch(cccw)
+            {
+                case "cw":
+                    {
+                        answer = set;
+                    }
+                    break;
+                case "ccw":
+                    {
+                        switch(set)
+                        {
+                            case "a": answer = "c"; break;
+                            case "b": answer = "d"; break;
+                            case "c": answer = "a"; break;
+                            case "d": answer = "b"; break;
+                        }
+                    }
+                    break;
+            }
+
+            $("success").innerHTML = wincount;
+            $("failed").innerHTML = losecount;
+        }
+
+        genRand();
+
+        $("marker-a").addEventListener("click", (e) => {
+            if (answer == "a")
+            {
+                wincount ++;
+            }
+            else
+            {
+                losecount ++;
+            }
+            genRand();
+        });
+
+        $("marker-b").addEventListener("click", (e) => {
+            if (answer == "b")
+            {
+                wincount ++;
+            }
+            else
+            {
+                losecount ++;
+            }
+            genRand();
+        });
+
+        $("marker-c").addEventListener("click", (e) => {
+            if (answer == "c")
+            {
+                wincount ++;
+            }
+            else
+            {
+                losecount ++;
+            }
+            genRand();
+        });
+
+        $("marker-d").addEventListener("click", (e) => {
+            if (answer == "d")
+            {
+                wincount ++;
+            }
+            else
+            {
+                losecount ++;
+            }
+            genRand();
+        });
+    </script>
+</html>
